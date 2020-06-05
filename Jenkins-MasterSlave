@@ -1,0 +1,53 @@
+pipeline {
+
+	agent {label 'Slave1'}
+	
+	stages{
+		stage('git') {
+		    
+		    steps {
+		        
+		        git 'https://github.com/ISR3942/MyMavenProject.git'   
+		    }
+		
+		}
+		
+		stage('Sonar Analysis and Maven Build') {
+		    
+		    steps {
+		       
+		         withSonarQubeEnv(credentialsId: 'sonar-jenkins', installationName: 'sonar-jenkins') {
+                     sh 'mvn clean package sonar:sonar'
+
+                }
+		        
+		    }
+		}
+		
+		stage("Quality Gate") {
+		    
+            steps {
+                
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+                
+              }
+              
+            }
+        }
+		
+		stage ('tomcat deploy') {
+		    
+		    steps {
+		        
+		        sshagent(['Tomcat']) {
+                    
+                    sh script: 'scp -o StrictHostKeyChecking=no /opt/jenkins/workspace/CI-Pipeline/target/israpp1.war ec2-user@52.136.126.197:/opt/tomcat8/webapps '
+                }
+		    }
+		    
+		}
+	
+	}
+	
+}
